@@ -12,8 +12,8 @@ from course_utils import login_to_class, get_syllabus_url, parse_syllabus
 from courseraLogin import login, saveCJ
 import datetime
 
-DEBUG = True
-CACHE_TIME = 10
+DEBUG = False
+CACHE_TIME = 24 * 60
 
 plugin = Plugin()
 
@@ -133,10 +133,21 @@ def index():
 			'is_playable': False,
 			'label2':c["short_description"],
 			'icon':c['large_icon'],
-			'thumbnail':c['large_icon']
+			'thumbnail':c['large_icon'],
+#			'context_menu':[("test", "XBMC.RunPlugin(%s)" % url)],
 		})
 	
 	return items
+
+@plugin.cached_route('/clearcache/')
+def clearcache():
+	plugin.log.info("clearing cache")
+
+	username = plugin.get_setting('username')
+	if username is not None and username != "":
+		plugin.get_storage(username, file_format='json').clear()
+		
+	plugin.get_storage('.functions', file_format='pickle').clear()
 
 def getCourseShortName(course):
 	home_link = course["home_link"]
