@@ -128,7 +128,20 @@ def parse_syllabus(page_txt, opener):
 		instructor_name = name_tag.string
 	else:
 		instructor_name = ""
+		
+	role_tag = soup.find(attrs={'class':'course-time'})
+	if role_tag is not None:
+		instructor_role = role_tag.string
+	else:
+		instructor_role = ""
 	
+	course_logo = soup.find(attrs={'class':"course-logo-name"})
+	if course_logo is not None:
+#		print "Course name = %s" % course_logo.text
+		course_name = course_logo.text
+	else:
+		course_name = ""
+				
 	sections = soup.findAll(attrs={'class':['list_header_link expanded', 'list_header_link contracted']})
 	for section_num,section in enumerate(sections):
 		heading = section.find(attrs={'class':'list_header'})
@@ -171,6 +184,9 @@ def parse_syllabus(page_txt, opener):
 #			print "- %s (%s)" % (lecture_title_str, data_lecture_view_link)
 			
 			lecture_entry = sections_entry[lecture_title_str] = {}
+			
+			lecture_entry["viewed"] = lecture.get('class') == 'item_row viewed'
+			
 			lecture_entry['data_lecture_view_link'] = data_lecture_view_link
 			lecture_entry["lecture_num"] = lecture_num
 			resources_entry = lecture_entry['resources'] = {}
@@ -196,5 +212,5 @@ def parse_syllabus(page_txt, opener):
 				print "No MP4 resource found. Using hidden video url logic"
 				resources_entry["Lecture Video"] = grab_hidden_video_url(data_lecture_view_link, opener)
 				
-	return {'sections':ret, 'instructor_name':instructor_name}
+	return {'sections':ret, 'instructor_name':instructor_name, 'instructor_role':instructor_role, 'course_name':course_name}
 

@@ -145,9 +145,13 @@ def clearcache():
 
 	username = plugin.get_setting('username')
 	if username is not None and username != "":
-		plugin.get_storage(username, file_format='json').clear()
+		user_cache = plugin.get_storage(username, file_format='json')
+		user_cache.clear()
+		user_cache.sync()
 		
-	plugin.get_storage('.functions', file_format='pickle').clear()
+	func_cache = plugin.get_storage('.functions', file_format='pickle')
+	func_cache.clear()
+	func_cache.sync()
 
 def getCourseShortName(course):
 	home_link = course["home_link"]
@@ -346,10 +350,12 @@ def listLectureContents(courseShortName, section_num):
 		return []
 	
 	instructor_name = sylabus['instructor_name']
-	sylabus = sylabus['sections']
+	instructor_role = sylabus['instructor_role']
+	
+	sections = sylabus['sections']
 	
 	lecture_desired = None
-	for lecture_contents in sylabus.values():
+	for lecture_contents in sections.values():
 		if str(lecture_contents['section_num']) == section_num:
 			lecture_desired = lecture_contents
 			break
@@ -378,8 +384,17 @@ def listLectureContents(courseShortName, section_num):
 			'episode': lecture_num+1,
 			'season': int(section_num)+1,
 			'title': title,	
-			'cast': instructor_name
+			'watched':section["viewed"]
 		}
+		
+		if instructor_name is not None and instructor_name != "":
+			if instructor_role is not None and instructor_role != "":
+				info['castAndRole'] = [(instructor_name, instructor_role)]
+			else:
+				info['cast'] = [instructor_name]
+		
+		if sylabus["course_name"] != "":
+			info['tvshowtitle'] = sylabus["course_name"]
 		
 		if duration is not None:
 			info["duration"] = duration
