@@ -174,13 +174,14 @@ def parse_syllabus(page_txt, opener):
 				continue
 			
 			data_lecture_view_link = lecture_title.get('data-lecture-view-link')
+			lecture_id = lecture_title.get('data-lecture-id')
 			
 			lecture_title_str = lecture_title.find(text=True)
 			if lecture_title_str is None:
 				print "Unable to parse lecture in %s" % (heading_text)
 				continue
 			
-			lecture_title_str = lecture_title_str.strip()
+			lecture_title_str = lecture_title_str.strip().replace("&quot;", '"')
 #			print "- %s (%s)" % (lecture_title_str, data_lecture_view_link)
 			
 			lecture_entry = sections_entry[lecture_title_str] = {}
@@ -189,6 +190,7 @@ def parse_syllabus(page_txt, opener):
 			
 			lecture_entry['data_lecture_view_link'] = data_lecture_view_link
 			lecture_entry["lecture_num"] = lecture_num
+			lecture_entry["lecture_id"] = lecture_id
 			resources_entry = lecture_entry['resources'] = {}
 			
 			resources = lecture.find(attrs={'class':'item_resource'})
@@ -205,8 +207,11 @@ def parse_syllabus(page_txt, opener):
 #				print "-- %s (%s) format=%s" % (title, href, resource_format)
 				if resource_format == 'mp4':
 					mp4_found = True
+					resources_entry["Lecture Video"] = href
+				elif resource_format == 'srt':
+					resources_entry["Subtitle"] = href
+					
 				resources_entry[title] = href
-				resources_entry["Lecture Video"] = href
 				
 			if not mp4_found:
 				print "No MP4 resource found. Using hidden video url logic"
