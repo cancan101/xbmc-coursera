@@ -13,12 +13,13 @@ from courseraLogin import login, saveCJ
 import datetime
 import time
 
+##############################
 DEBUG = False
 CACHE_TIME = 24 * 60
-
+##############################
 plugin = Plugin()
-
-if DEBUG:
+##############################
+if DEBUG: ####TODO remove this in new version of xbmcswift2
 	plugin.log.setLevel(level=logging.DEBUG)
 
 	settings_fp = open("settings.json", 'r')
@@ -29,6 +30,7 @@ if DEBUG:
 #	print "username=%s" % (username)
 	plugin.set_setting('username', username)
 	plugin.set_setting('password', settings["password"])
+##############################
 
 def isSettingsBad(username, password):
 	return username is None or password is None or username == "" or password == ""
