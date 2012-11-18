@@ -1,4 +1,4 @@
-from xbmcswift2 import Plugin
+from xbmcswift2 import Plugin, xbmc
 import xbmcswift2
 
 import logging
@@ -11,6 +11,7 @@ import re
 from course_utils import login_to_class, get_syllabus_url, parse_syllabus
 from courseraLogin import login, saveCJ
 import datetime
+import time
 
 DEBUG = False
 CACHE_TIME = 24 * 60
@@ -139,7 +140,7 @@ def index():
 	
 	return items
 
-@plugin.cached_route('/clearcache/')
+@plugin.route('/clearcache/')
 def clearcache():
 	plugin.log.info("clearing cache")
 
@@ -336,8 +337,46 @@ def extractDuration(section):
 			return match.group(1).strip(), match.group(2).replace('m', ":")
 	else:
 		return match.group(1).strip(), match.group(2)
+	
+@plugin.route('/courses/<courseShortName>/lecture/<lecture_id>/')
+def playLecture(courseShortName, lecture_id):
+	username = plugin.get_setting('username')
+	password = plugin.get_setting('password')
+	
+	if isSettingsBad(username, password):
+		return []
+	
+	sylabus = getSylabus(courseShortName, username, password)
+	if sylabus is None:
+		return []
+	
+	sections = sylabus['sections']
+	
+	for lecture_contents in sections.values():
+		sections = lecture_contents["sections"]
+		for section_name, section in sections.iteritems():
+			if section["lecture_id"] == lecture_id:
+				print "FOUND!: %s" % section_name
+				url = section['resources']["Lecture Video"]
+				class_cookies = loadSavedClassCookies(username).get(courseShortName)
+				
+				cookies = '&'.join(["%s=%s" % (x["name"], x["value"]) for x in class_cookies])
+				
+				cookies_str = urllib.urlencode({'Cookie':cookies})
+				path = "%s|%s" % (url, cookies_str)
+				plugin.set_resolved_url(path)
+				
+				if "Subtitle" in section['resources']:
+					player = xbmc.Player()
+					while not player.isPlaying():
+						time.sleep(1)
+					xbmc.Player().setSubtitles(section['resources']["Subtitle"])
 
-@plugin.cached_route('/courses/<courseShortName>/<section_num>/')
+				break
+		
+#	return []
+
+@plugin.cached_route('/courses/<courseShortName>/sections/<section_num>/')
 def listLectureContents(courseShortName, section_num):
 	username = plugin.get_setting('username')
 	password = plugin.get_setting('password')
@@ -366,25 +405,25 @@ def listLectureContents(courseShortName, section_num):
 	
 	class_cookies = loadSavedClassCookies(username).get(courseShortName)
 	
-#	cookies = dict(zip([x["name"] for x in class_cookies], [x["value"] for x in class_cookies]))
-	
 	cookies = '&'.join(["%s=%s" % (x["name"], x["value"]) for x in class_cookies])
 	
 	cookies_str = urllib.urlencode({'Cookie':cookies})
 	
-	sections = lecture_desired["sections"]
+	section_lecture = lecture_desired["sections"]
 	
 	ret = []
-	for section_name, section in sections.iteritems():
+	for section_name, section in section_lecture.iteritems():
 		title, duration = extractDuration(section_name)
 		url = section['resources']["Lecture Video"]
 		lecture_num = section['lecture_num']
+		
+		play_url = plugin.url_for(endpoint="playLecture", courseShortName=courseShortName, lecture_id=str(section["lecture_id"]))
 		
 		info = {
 			'episode': lecture_num+1,
 			'season': int(section_num)+1,
 			'title': title,	
-			'watched':section["viewed"]
+			'watched':section["viewed"],
 		}
 		
 		if instructor_name is not None and instructor_name != "":
@@ -406,6 +445,7 @@ def listLectureContents(courseShortName, section_num):
 			'path': path,
 			'is_playable': True,
 			'info':info,
+			'context_menu':[("Play with subs", "XBMC.RunPlugin(%s)" % play_url)],
 		})
 	plugin.add_sort_method(xbmcswift2.SortMethod.EPISODE)
 #	print(dir(xbmcswift2.SortMethod))
