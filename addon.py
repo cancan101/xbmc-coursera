@@ -155,6 +155,10 @@ def clearcache():
 	func_cache = plugin.get_storage('.functions', file_format='pickle')
 	func_cache.clear()
 	func_cache.sync()
+	
+	main_cache = plugin.get_storage('main', file_format='pickle')
+	main_cache.clear()
+	main_cache.sync()
 
 def getCourseShortName(course):
 	home_link = course["home_link"]
@@ -228,7 +232,12 @@ def getClassCookies(className, username, password):
 	
 	cookies_raw = user_data.get('cookies')
 	if cookies_raw is None:
-		return None
+		external_id, public_id, cookies_raw = login(username, password)
+		if cookies_raw is None:
+			return None
+		user_data['cookies'] = cookies_raw
+		user_data['external_id'] = external_id
+		user_data['public_id'] = public_id
 
 	cj = loadSavedCookies(cookies_raw=cookies_raw)
 	
@@ -268,8 +277,12 @@ def getSylabus(className, username, password):
 	if cookies is None:
 		plugin.log.debug("Cookies for %s not found. Logging in to class" % className)
 		cookies = getClassCookies(className, username, password)
-		didLogin = True
-		cookies_class[className] = cookies
+		
+		if cookies is not None:
+			didLogin = True
+			cookies_class[className] = cookies
+		else:
+			raise Exception("Unable to login to class")
 	
 
 	url = get_syllabus_url(className=className)
@@ -366,17 +379,24 @@ def playLecture(courseShortName, lecture_id):
 				
 				cookies_str = urllib.urlencode({'Cookie':cookies})
 				path = "%s|%s" % (url, cookies_str)
-				plugin.set_resolved_url(path)
+				
+				plugin.log.info('Handle: ' + str(plugin.handle))
+				
+				ret = plugin.set_resolved_url(path)
 				
 				if "Subtitle" in section['resources']:
 					player = xbmc.Player()
 					while not player.isPlaying():
 						time.sleep(1)
-					xbmc.Player().setSubtitles(section['resources']["Subtitle"])
-
+					player.setSubtitles(section['resources']["Subtitle"])
+				
+#				return ret
 				break
 		
 #	return []
+
+def alwaysSubtiles():
+	return True # plugin.get_setting('alwaysSubtiles')
 
 @plugin.cached_route('/courses/<courseShortName>/sections/<section_num>/')
 def listLectureContents(courseShortName, section_num):
@@ -441,13 +461,19 @@ def listLectureContents(courseShortName, section_num):
 			info["duration"] = duration
 		
 		path = "%s|%s" % (url, cookies_str)
+		
+		if alwaysSubtiles():
+			path = play_url
 			
 		ret.append({
 			'label': title,
 			'path': path,
 			'is_playable': True,
 			'info':info,
-			'context_menu':[("Play with subs", "XBMC.RunPlugin(%s)" % play_url)],
+			'context_menu':[
+						("Play with subtitles", "XBMC.RunPlugin(%s)" % play_url),
+						("Play with subtitles2", "XBMC.PlayMedia(%s)" % play_url)
+						],
 		})
 	plugin.add_sort_method(xbmcswift2.SortMethod.EPISODE)
 #	print(dir(xbmcswift2.SortMethod))
