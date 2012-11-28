@@ -270,21 +270,7 @@ def loadSavedClassCookies(username):
 def getSylabus(className, username, password):
 	plugin.log.info("getSylabus for %s." % className)
 	
-	cookies_class = loadSavedClassCookies(username)
-		
-	cookies = cookies_class.get(className)
-	didLogin = False
-	if cookies is None:
-		plugin.log.debug("Cookies for %s not found. Logging in to class" % className)
-		cookies = getClassCookies(className, username, password)
-		
-		if cookies is not None:
-			didLogin = True
-			cookies_class[className] = cookies
-		else:
-			raise Exception("Unable to login to class")
-	
-
+	cookies, didLogin = getClassCookieOrLogin(username, password, className, indicateDidLogin=True)
 	url = get_syllabus_url(className=className)
 	plugin.log.debug("syllabus_url=%s" % url)
 	opener = getOpenerFromRawCookies(cookies_raw=cookies)
@@ -307,6 +293,7 @@ def getSylabus(className, username, password):
 			if not_logged_in:
 				raise Exception("Unable to login to class")
 			else:
+				cookies_class = loadSavedClassCookies(username)
 				cookies_class[className] = cookies
 	
 	parsed = parse_syllabus(sylabus_txt, opener)
@@ -352,7 +339,28 @@ def extractDuration(section):
 			return match.group(1).strip(), match.group(2).replace('m', ":")
 	else:
 		return match.group(1).strip(), match.group(2)
+
+def getClassCookieOrLogin(username, password, courseShortName, indicateDidLogin=False):
+	didLogin = False
 	
+	cookies_class = loadSavedClassCookies(username)
+	
+	class_cookies = cookies_class.get(courseShortName)
+	if class_cookies is None:
+		plugin.log.debug("Cookies for %s not found. Logging in to class" % courseShortName)
+		class_cookies = getClassCookies(courseShortName, username, password)
+		
+		if class_cookies is not None:
+			didLogin = True
+			cookies_class[courseShortName] = class_cookies
+		else:
+			raise Exception("Unable to login to class")	
+	
+	if indicateDidLogin:
+		return class_cookies, didLogin
+	else:
+		return class_cookies
+
 @plugin.route('/courses/<courseShortName>/lecture/<lecture_id>/')
 def playLecture(courseShortName, lecture_id):
 	username = plugin.get_setting('username')
@@ -373,7 +381,8 @@ def playLecture(courseShortName, lecture_id):
 			if section["lecture_id"] == lecture_id:
 				print "FOUND!: %s" % section_name
 				url = section['resources']["Lecture Video"]
-				class_cookies = loadSavedClassCookies(username).get(courseShortName)
+				
+				class_cookies = getClassCookieOrLogin(username, password, courseShortName)
 				
 				cookies = '&'.join(["%s=%s" % (x["name"], x["value"]) for x in class_cookies])
 				
@@ -425,7 +434,7 @@ def listLectureContents(courseShortName, section_num):
 		plugin.log.error("Lecture %d for $s not found" % (section_num, courseShortName))
 		return []
 	
-	class_cookies = loadSavedClassCookies(username).get(courseShortName)
+	class_cookies = getClassCookieOrLogin(username, password, courseShortName)
 	
 	cookies = '&'.join(["%s=%s" % (x["name"], x["value"]) for x in class_cookies])
 	
