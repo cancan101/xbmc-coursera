@@ -4,31 +4,19 @@ Created on Nov 7, 2012
 @author: alex
 '''
 import json
-import cookielib
 import urllib2
 import urllib
 from BeautifulSoup import BeautifulSoup
 import re
 import string
 
-
-def loadSavedCookies(cookies_raw):
-	cookies = []
-	for cookie in cookies_raw:
-		cookies.append(cookielib.Cookie(**cookie))
-		
-	cj = cookielib.CookieJar()
-	for cookie in cookies:
-		cj.set_cookie(cookie)
-		
-	return cj
-
-def getOpener(cj):
-	return urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-
-def get_page(href, opener):
-	req = urllib2.Request(href)
+def get_page(href, opener, data=None):
+	req = urllib2.Request(href,data=data)
 	return opener.open(req).read()
+
+def get_page_redirect(href, opener):
+	req = urllib2.Request(href)
+	return opener.open(req).geturl()	
 
 def loadProfile(external_id, opener):
 	try:
@@ -57,11 +45,9 @@ def get_auth_url(className):
 
 def login_to_class(className, opener, username, password):
 	auth_url = get_auth_url(className)
-	print "auth_url=%s" % auth_url
-	req = urllib2.Request(auth_url)
-	ref = opener.open(req).geturl()
+	ref = get_page_redirect(href=auth_url, opener=opener)
 	
-	print "Following login redirect to: %s" % ref
+	print "Following login redirect from auth_url=%s to: %s" % (auth_url, ref)
 
 	classLogin_txt = get_page(ref, opener)
 	
@@ -72,14 +58,12 @@ def login_to_class(className, opener, username, password):
 	if classLogin_title == "Coursera Login":
 		print "We are not currently logged-in. Attempting login"
 		data = urllib.urlencode({'email': username, 'password': password, 'login': 'Login'})
-		req = urllib2.Request(ref, data)
-		classLogin_txt = opener.open(req).read()
+		classLogin_txt = get_page(href=ref, opener=opener, data=data)
 		
 		soup = BeautifulSoup(classLogin_txt)
 	
 		classLogin_title = soup.html.head.title.string.strip()
 
-#		print classLogin_title
 		if classLogin_title == "Authentication":
 			print "We successfully logged-in."
 			return True
@@ -90,7 +74,7 @@ def login_to_class(className, opener, username, password):
 		print "We are currently logged-in."
 		return True
 	else:
-		print "Unknown state: %s" % classLogin_title
+		print "Unknown state (from title): %s" % classLogin_title
 		return False
 
 def grab_hidden_video_url(href, opener):
