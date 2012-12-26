@@ -5,6 +5,8 @@
   <category label="30218">
         <setting label="30200" type="text"   id="username" default=""/>
         <setting label="30201" type="text"   id="password" option="hidden"  enable="!eq(-1,)" default=""/>
+		<setting type="sep"/>        
+        <setting id="enable_subtitles" type="bool" default="true" label="30111" />
 		<setting type="sep"/>
         <setting type="action" label="30060" option="close" action="XBMC.RunPlugin(plugin://plugin.video.coursera/clearcache/)" />
   </category>

@@ -405,7 +405,7 @@ def playLecture(courseShortName, lecture_id):
 #	return []
 
 def alwaysSubtiles():
-	return True # plugin.get_setting('alwaysSubtiles')
+	return plugin.get_setting('enable_subtitles')
 
 @plugin.cached_route('/courses/<courseShortName>/sections/<section_num>/')
 def listLectureContents(courseShortName, section_num):
