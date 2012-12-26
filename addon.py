@@ -112,8 +112,17 @@ def index():
 		
 		if isSettingsBad(username, password):
 			return []
-		
-	classes = loadClasses(username, password)
+	
+	try:	
+		classes = loadClasses(username, password)
+	except urllib2.HTTPError, ex:
+		if ex.code != 401:
+			raise ex
+		else:
+			plugin.notify(msg="Unable to login to Coursera")
+			print "Unable to login to Coursera"
+			return []
+	
 #	plugin.log.debug(classes)
 	plugin.add_sort_method(xbmcswift2.SortMethod.TITLE_IGNORE_THE)
 
