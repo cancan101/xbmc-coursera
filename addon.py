@@ -19,17 +19,8 @@ CACHE_TIME = 24 * 60
 ##############################
 plugin = Plugin()
 ##############################
-if DEBUG: ####TODO remove this in new version of xbmcswift2
+if DEBUG:
 	plugin.log.setLevel(level=logging.DEBUG)
-
-	settings_fp = open("settings.json", 'r')
-	settings = json.load(settings_fp)
-	settings_fp.close()
-	
-	username = settings["username"]
-#	print "username=%s" % (username)
-	plugin.set_setting('username', username)
-	plugin.set_setting('password', settings["password"])
 ##############################
 
 def isSettingsBad(username, password):
