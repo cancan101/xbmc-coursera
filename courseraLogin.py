@@ -46,7 +46,7 @@ def saveCJ(cj):
 	return cookies
 
 def makeCSRFToken():
-	csrftoken = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for x in xrange(24))
+	csrftoken = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in xrange(24))
 	return csrftoken
 
 

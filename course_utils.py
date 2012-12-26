@@ -99,8 +99,8 @@ def get_anchor_format(a):
 	"""Extract the resource file-type format from the anchor"""
 	# (. or format=) then (file_extension) then (? or $)
 	# e.g. "...format=txt" or "...download.mp4?..."
-	format = re.search("(?:\.|format=)(\w+)(?:\?.*)?$", a)
-	return format.group(1) if format else None
+	file_format = re.search("(?:\.|format=)(\w+)(?:\?.*)?$", a)
+	return file_format.group(1) if file_format else None
 
 def parse_syllabus(page_txt, opener):
 	ret = {}
@@ -147,7 +147,7 @@ def parse_syllabus(page_txt, opener):
 		
 		section_entries = section.nextSibling
 		if section_entries is None:
-			print "Unable to parse section: %s" (heading_text)
+			print "Unable to parse section: %s" % (heading_text)
 			continue
 		
 		lectures = section_entries.findAll('li')
