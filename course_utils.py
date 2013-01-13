@@ -106,37 +106,42 @@ def parse_syllabus(page_txt, opener):
 	ret = {}
 	
 	soup = BeautifulSoup(page_txt)
+#	import pdb;pdb.set_trace()
 	
-	name_tag = soup.find(attrs={'class':'course-instructor-name'})
+	name_tag = soup.find(attrs={'class':'course-instructor-name'}) or soup.find(attrs={'class':'course-topbanner-instructor'})
 	if name_tag is not None:
 		instructor_name = name_tag.string
 	else:
 		instructor_name = ""
 		
-	role_tag = soup.find(attrs={'class':'course-time'})
+	role_tag = soup.find(attrs={'class':'course-time'}) or soup.find(attrs={'class':'course-topbanner-time'})
 	if role_tag is not None:
 		instructor_role = role_tag.string
 	else:
 		instructor_role = ""
 	
-	course_logo = soup.find(attrs={'class':"course-logo-name"})
+	course_logo = soup.find(attrs={'class':"course-logo-name"}) or soup.find(attrs={'class':"course-topbanner-logo-name"})
 	if course_logo is not None:
 #		print "Course name = %s" % course_logo.text
 		course_name = course_logo.text
 	else:
 		course_name = ""
 				
-	sections = soup.findAll(attrs={'class':['list_header_link expanded', 'list_header_link contracted']})
+	sections = soup.findAll(attrs={'class':['list_header_link expanded', 'list_header_link contracted', "course-item-list-header expanded", "course-item-list-header contracted"]})
 	for section_num,section in enumerate(sections):
-		heading = section.find(attrs={'class':'list_header'})
+		heading = section.find(attrs={'class':'list_header'}) or section.find("h3")
 		if heading is None:
-			print "Unable to parse section"
+			print "Unable to parse section. no heading node"
+			continue
+#		else:
+#			heading = heading.nextSibling
+		
+		heading_text = heading.find(text=True)# heading.string
+		if heading_text is None:
+			print "Unable to parse section. no heading text"
 			continue
 		
-		heading_text = heading.string
-		if heading_text is None:
-			print "Unable to parse section"
-			continue
+		heading_text = heading_text.replace("&nbsp;", " ").replace("&quot;", '"')
 		
 		heading_text = heading_text.strip()
 #		print heading_text
@@ -157,7 +162,7 @@ def parse_syllabus(page_txt, opener):
 				print "Unable to parse lecture in %s (lecture_title is None)" % (heading_text)
 				continue
 			
-			data_lecture_view_link = lecture_title.get('data-lecture-view-link')
+			data_lecture_view_link = lecture_title.get('data-lecture-view-link') or lecture_title.get('data-modal-iframe')
 			lecture_id = lecture_title.get('data-lecture-id')
 			
 			lecture_title_str = lecture_title.find(text=True)
@@ -170,14 +175,14 @@ def parse_syllabus(page_txt, opener):
 			
 			lecture_entry = sections_entry[lecture_title_str] = {}
 			
-			lecture_entry["viewed"] = lecture.get('class') == 'item_row viewed'
+			lecture_entry["viewed"] = lecture.get('class') in ['item_row viewed', 'viewed']
 			
 			lecture_entry['data_lecture_view_link'] = data_lecture_view_link
 			lecture_entry["lecture_num"] = lecture_num
 			lecture_entry["lecture_id"] = lecture_id
 			resources_entry = lecture_entry['resources'] = {}
 			
-			resources = lecture.find(attrs={'class':'item_resource'})
+			resources = lecture.find(attrs={'class':['item_resource', "course-lecture-item-resource"]})
 			if resources is None:
 				print "Unable to find resources for lecture %s in %s" % (lecture_title_str, heading_text)
 				continue

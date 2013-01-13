@@ -431,7 +431,7 @@ def listLectureContents(courseShortName, section_num):
 			break
 		
 	if lecture_desired is None:
-		plugin.log.error("Lecture %d for $s not found" % (section_num, courseShortName))
+		plugin.log.error("Lecture %d for %s not found" % (section_num, courseShortName))
 		return []
 	
 	class_cookies = getClassCookieOrLogin(username, password, courseShortName)
@@ -446,7 +446,7 @@ def listLectureContents(courseShortName, section_num):
 	for section_name, section in section_lecture.iteritems():
 		title, duration = extractDuration(section_name)
 		url = section['resources']["Lecture Video"]
-		lecture_num = section['lecture_num']
+		lecture_num = section['lecture_num'] # int(section["lecture_id"])
 		
 		play_url = plugin.url_for(endpoint="playLecture", courseShortName=courseShortName, lecture_id=str(section["lecture_id"]))
 		
