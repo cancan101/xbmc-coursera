@@ -99,8 +99,8 @@ def loadClasses(username, password):
 		
 	return classes
 
-@plugin.cached_route('/classes/', name="classes")
-@plugin.cached_route('/')
+@plugin.route('/classes/', name="classes")
+@plugin.route('/')
 def index():
 	username = plugin.get_setting('username')
 	password = plugin.get_setting('password')
@@ -304,6 +304,7 @@ def getSylabus(className, username, password):
 def listCourseContents(courseShortName):
 	username = plugin.get_setting('username')
 	password = plugin.get_setting('password')
+	number_episodes = plugin.get_setting('number_episodes')
 	
 	if isSettingsBad(username, password):
 		return []
@@ -317,24 +318,35 @@ def listCourseContents(courseShortName):
 	ret = []
 	for lecture in sorted(sylabus.keys(), key=lambda x: sylabus[x]["section_num"]):
 		section_num = sylabus[lecture]["section_num"]
+		label = lecture
+		if number_episodes:
+			label = "%d. %s" % (section_num+1, label)
 		ret.append({
-			'label': lecture,
+			'label': label,
 			'path': plugin.url_for(endpoint="listLectureContents", courseShortName=courseShortName, section_num=str(section_num)),
 			'is_playable': False,
 			'info':{
 				'season': section_num+1,
+				'title':lecture,
+#				'episode': section_num+1,
 			}			
 		})
+#	plugin.add_sort_method(xbmcswift2.SortMethod.SEASON)
 	return ret
 
 title_re1 = re.compile("^(.*) \((\d+\:\d{2})\)$")
 title_re2 = re.compile("^\d+\-\d+\: (.*) \((\d+m\d{2})s\)$")
+title_re3 = re.compile("^(.*) \((\d+m\d{2})s\)$")
 def extractDuration(section):
 	match = title_re1.match(section)
 	if match is None:
 		match = title_re2.match(section)
 		if match is None:
-			return section, None
+			match = title_re3.match(section)
+			if match is None:
+				return section, None
+			else:
+				return match.group(1).strip(), match.group(2).replace('m', ":")
 		else:
 			return match.group(1).strip(), match.group(2).replace('m', ":")
 	else:
@@ -473,6 +485,8 @@ def listLectureContents(courseShortName, section_num):
 		
 		if alwaysSubtiles():
 			path = play_url
+			
+#		print info
 			
 		ret.append({
 			'label': title,

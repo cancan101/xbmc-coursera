@@ -113,12 +113,14 @@ def parse_syllabus(page_txt, opener):
 		instructor_name = name_tag.string
 	else:
 		instructor_name = ""
+#	print "instructor_name=%s" % instructor_name
 		
 	role_tag = soup.find(attrs={'class':'course-time'}) or soup.find(attrs={'class':'course-topbanner-time'})
 	if role_tag is not None:
-		instructor_role = role_tag.string
+		instructor_role = role_tag.string.strip()
 	else:
 		instructor_role = ""
+#	print "instructor_role=%s" % instructor_role
 	
 	course_logo = soup.find(attrs={'class':"course-logo-name"}) or soup.find(attrs={'class':"course-topbanner-logo-name"})
 	if course_logo is not None:
