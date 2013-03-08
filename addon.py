@@ -100,7 +100,7 @@ def loadClasses(username, password):
 	return classes
 
 @plugin.route('/classes/', name="classes")
-@plugin.route('/')
+@plugin.route('/',name="index")
 def index():
 	username = plugin.get_setting('username')
 	password = plugin.get_setting('password')
@@ -170,8 +170,9 @@ def getCourseShortName(course):
 def listCoursesForEntry(classEntry):
 #	classShortName = classEntry["short_name"]
 	courses = classEntry["courses"]
-	
+
 	if len(courses) == 1:
+#		plugin.log.debug("one item case")
 		return listCourseContents(courseShortName=getCourseShortName(courses[0]))
 	
 	ret = []
@@ -221,6 +222,8 @@ def listCourses(shortName):
 	for c in classes:
 		if c["short_name"] == shortName:
 			return listCoursesForEntry(c)
+	else:
+		plugin.log.error("%s not found: %s" % (shortName, [x["short_name"] for x in classes]))
 	
 	return []
 
@@ -312,6 +315,12 @@ def listCourseContents(courseShortName):
 	sylabus = getSylabus(courseShortName, username, password)
 	if sylabus is None:
 		return []
+	elif sylabus == "CLOSED":
+		return [{
+			'label': "%s is no longer available on Coursera" % courseShortName,
+			 'path':plugin.url_for(endpoint="index")
+		}]
+	
 	
 	sylabus = sylabus['sections']
 	

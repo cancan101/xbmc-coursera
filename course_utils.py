@@ -103,6 +103,9 @@ def get_anchor_format(a):
 	return file_format.group(1) if file_format else None
 
 def parse_syllabus(page_txt, opener):
+	if "Sorry, this class site is now closed" in page_txt:
+		return "CLOSED"
+		
 	ret = {}
 	
 	soup = BeautifulSoup(page_txt)
