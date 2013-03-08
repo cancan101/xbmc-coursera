@@ -328,7 +328,7 @@ def listCourseContents(courseShortName):
 	for lecture in sorted(sylabus.keys(), key=lambda x: sylabus[x]["section_num"]):
 		section_num = sylabus[lecture]["section_num"]
 		label = lecture
-		if number_episodes:
+		if number_episodes is True or number_episodes == "true":
 			label = "%d. %s" % (section_num+1, label)
 		ret.append({
 			'label': label,
