@@ -250,8 +250,8 @@ def getClassCookies(className, username, password):
 	CSRFT_TOKEN_COOKIE_NAME = "csrf_token"
 	cj.clear(domain="class.coursera.org", path="/%s" % className, name=CSRFT_TOKEN_COOKIE_NAME)
 	#cj.clear(domain="class.coursera.org", path="/%s" % className, name="session")
-	cj.clear(domain="www.coursera.org", path="/" , name="maestro_login")
-	cj.clear(domain="www.coursera.org", path="/" , name="sessionid")
+# 	cj.clear(domain="www.coursera.org", path="/" , name="maestro_login")
+# 	cj.clear(domain="www.coursera.org", path="/" , name="sessionid")
 	
 	return saveCJ(cj)
 
