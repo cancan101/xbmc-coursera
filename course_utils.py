@@ -9,32 +9,19 @@ import urllib
 from BeautifulSoup import BeautifulSoup
 import re
 import string
+from urllib2 import HTTPError
 
 def get_page(href, opener, data=None):
 	req = urllib2.Request(href,data=data)
-	return opener.open(req).read()
+	try:
+		return opener.open(req).read()
+	except HTTPError:
+		return None
 
 def get_page_redirect(href, opener):
 	req = urllib2.Request(href)
 	return opener.open(req).geturl()	
-
-def loadProfile(external_id, opener):
-	try:
-		profile_str = get_page("https://www.coursera.org/maestro/api/user/profile?user-id=%s" % external_id, opener)
-		return profile_str
-	except urllib2.HTTPError as httperr:
-		if httperr.code == 403:
-			print "Verbotten"
-		else:
-			print httperr
-		return None
 	
-def getClasses(public_id, opener):
-	href = "https://www.coursera.org/maestro/api/topic/list_my?user_id=%s" % public_id
-	
-	return json.loads(get_page(href, opener))
-		
-
 def get_syllabus_url(className):
 	"""Return the Coursera index/syllabus URL."""
 	return "http://class.coursera.org/%s/lecture/index" % className
@@ -83,6 +70,9 @@ def grab_hidden_video_url(href, opener):
 	University of Washington).
 	"""
 	page = get_page(href, opener)
+	if page is None:
+		return None
+	
 	soup = BeautifulSoup(page)
 	l = soup.findAll('source', attrs={'type': 'video/mp4'})
 	return l[0]['src']

@@ -51,12 +51,13 @@ def makeCSRFToken():
 
 
 def makeLoginRequest(username, password, csrftoken):
-	params = urllib.urlencode({'email_address':username, 'password':password})
-	req = urllib2.Request("https://www.coursera.org/maestro/api/user/login", params)
+	params = urllib.urlencode({'email':username, 'password':password})
+	req = urllib2.Request("https://accounts.coursera.org/api/v1/login", params)
 	req.add_header('Referer','https://www.coursera.org/account/signin')
-	req.add_header('Host',"www.coursera.org")
+	req.add_header('Host',"accounts.coursera.org")
 	req.add_header('X-CSRFToken', csrftoken)
 	req.add_header('X-Requested-With', 'XMLHttpRequest')
+	req.add_header('Origin', 'https://accounts.coursera.org')
 	
 	return req
 
@@ -79,12 +80,9 @@ def login(username, password):
 	response = opener.open(req)
 	logIn_resp = response.read()
 	
-	logIn_resp_dict = json.loads(logIn_resp)
 	
 	#print logIn_resp_dict
 	
-	external_id = str(logIn_resp_dict["external_id"])
-	public_id = str(logIn_resp_dict["id"])
 	
 	cj.clear("", "/", CSRFT_TOKEN_COOKIE_NAME)
 	
@@ -92,5 +90,5 @@ def login(username, password):
 	#cj.clear("www.coursera.org", "/", "sessionid")
 	
 	
-	return external_id, public_id, saveCJ(cj) 
+	return saveCJ(cj) 
 

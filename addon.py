@@ -50,37 +50,34 @@ def get_page(href, opener):
 	req = urllib2.Request(href)
 	return opener.open(req).read()
 
-def getClasses(public_id, opener):
-	href = "https://www.coursera.org/maestro/api/topic/list_my?user_id=%s" % public_id
+def getClasses(opener):
+	href = "https://www.coursera.org/maestro/api/topic/list2_new"
 	
-	return json.loads(get_page(href, opener))
+	page_contents = get_page(href, opener)
+	
+	return json.loads(page_contents)
 
 @plugin.cached(TTL=CACHE_TIME)
 def loadClasses(username, password):
 	user_data = plugin.get_storage(username, file_format='json')
 	
 	cookies_raw = user_data.get('cookies')
-	external_id = user_data.get('external_id')
-	public_id = user_data.get('public_id')
 	
 	did_login = False
-	if cookies_raw is None or external_id is None or public_id is None:
+	if cookies_raw is None:
 		plugin.log.info("Logging in")
-		external_id, public_id, cookies_raw = login(username, password)
+		cookies_raw = login(username, password)
 		user_data['cookies'] = cookies_raw
-		user_data['external_id'] = external_id
-		user_data['public_id'] = public_id
 		did_login = True
 	else:
 		plugin.log.debug("Loading data from store")
 
-	plugin.log.debug("external_id=%s, public_id=%s" % (external_id, public_id))
 #	plugin.log.debug("Cookies:\n%s" % '\n'.join([str(x) for x in cookies_raw]))
 	
 	opener = getOpenerFromRawCookies(cookies_raw=cookies_raw)
 	
 	try:
-		classes = getClasses(public_id, opener)
+		classes = getClasses(opener)
 	except urllib2.HTTPError, ex:
 		if ex.code != 403:
 			raise ex
@@ -89,13 +86,11 @@ def loadClasses(username, password):
 			raise ex
 		
 		plugin.log.info("Maybe cookies is old? Logging in")
-		external_id, public_id, cookies_raw = login(username, password)
+		cookies_raw = login(username, password)
 		user_data['cookies'] = cookies_raw
-		user_data['external_id'] = external_id
-		user_data['public_id'] = public_id
 
 		opener = getOpenerFromRawCookies(cookies_raw=cookies_raw)
-		classes = getClasses(public_id, opener)
+		classes = getClasses(opener)
 		
 	return classes
 
@@ -127,7 +122,7 @@ def index():
 	plugin.add_sort_method(xbmcswift2.SortMethod.TITLE_IGNORE_THE)
 
 	items = []
-	for c in classes:
+	for k,c in classes["topics"].iteritems():
 		url = plugin.url_for('listCourses', shortName=c["short_name"])
 		
 		items.append({
@@ -167,9 +162,11 @@ def getCourseShortName(course):
 	
 	return short_name
 
-def listCoursesForEntry(classEntry):
+def listCoursesForEntry(topic_entry, classes):
 #	classShortName = classEntry["short_name"]
-	courses = classEntry["courses"]
+	k = topic_entry["id"]
+	classEntry = [x for x in classes["courses"] if x["topic_id"] == k]
+	courses = classEntry
 
 	if len(courses) == 1:
 #		plugin.log.debug("one item case")
@@ -204,8 +201,8 @@ def listCoursesForEntry(classEntry):
 		ret.append({
 			'label': label,
 			'path': url,
-			'icon':classEntry['large_icon'],
-			'thumbnail':classEntry['large_icon'],
+			'icon':topic_entry['large_icon'],
+			'thumbnail':topic_entry['large_icon'],
 			'is_playable': False
 		})
 	return ret
@@ -219,9 +216,9 @@ def listCourses(shortName):
 		return []
 		
 	classes = loadClasses(username, password)
-	for c in classes:
+	for k,c in classes["topics"].iteritems():
 		if c["short_name"] == shortName:
-			return listCoursesForEntry(c)
+			return listCoursesForEntry(c, classes)
 	else:
 		plugin.log.error("%s not found: %s" % (shortName, [x["short_name"] for x in classes]))
 	
@@ -235,12 +232,10 @@ def getClassCookies(className, username, password):
 	
 	cookies_raw = user_data.get('cookies')
 	if cookies_raw is None:
-		external_id, public_id, cookies_raw = login(username, password)
+		cookies_raw = login(username, password)
 		if cookies_raw is None:
 			return None
 		user_data['cookies'] = cookies_raw
-		user_data['external_id'] = external_id
-		user_data['public_id'] = public_id
 
 	cj = loadSavedCookies(cookies_raw=cookies_raw)
 	
@@ -268,6 +263,15 @@ def loadSavedClassCookies(username):
 		cookies_class = user_data['cookies_class'] = {}
 	
 	return cookies_class	
+
+def getClassOpener(className, username, password):
+	cookies = getClassCookies(className, username, password)
+	return getOpenerFromRawCookies(cookies_raw=cookies)	
+
+def resolveClassUrl(className, username, password, href):
+	opener = getClassOpener(className, username, password)
+	req = urllib2.Request(href)
+	return opener.open(req).geturl()	
 
 @plugin.cached(TTL=CACHE_TIME)				
 def getSylabus(className, username, password):
@@ -382,6 +386,19 @@ def getClassCookieOrLogin(username, password, courseShortName, indicateDidLogin=
 	else:
 		return class_cookies
 
+def getContentURL(section, courseShortName, username, password, cookies_str):
+	url = section['resources']["Lecture Video"]
+	if url is None:
+		return None
+	new_url = resolveClassUrl(courseShortName, username, password, url)		
+	if new_url != url:
+		# Using new style redirect
+		path = new_url
+	else:
+		path = "%s|%s" % (url, cookies_str)
+		
+	return path
+
 @plugin.route('/courses/<courseShortName>/lecture/<lecture_id>/')
 def playLecture(courseShortName, lecture_id):
 	username = plugin.get_setting('username')
@@ -400,27 +417,27 @@ def playLecture(courseShortName, lecture_id):
 		sections = lecture_contents["sections"]
 		for section_name, section in sections.iteritems():
 			if section["lecture_id"] == lecture_id:
-				print "FOUND!: %s" % section_name
-				url = section['resources']["Lecture Video"]
+				print "FOUND!: %s" % section_name.encode('ascii', 'ignore')
 				
 				class_cookies = getClassCookieOrLogin(username, password, courseShortName)
 				
 				cookies = '&'.join(["%s=%s" % (x["name"], x["value"]) for x in class_cookies])
 				
 				cookies_str = urllib.urlencode({'Cookie':cookies})
-				path = "%s|%s" % (url, cookies_str)
 				
-				plugin.log.info('Handle: ' + str(plugin.handle))
-				
-				ret = plugin.set_resolved_url(path)
-				
-				if "Subtitle" in section['resources']:
-					player = xbmc.Player()
-					while not player.isPlaying():
-						time.sleep(1)
-					player.setSubtitles(section['resources']["Subtitle"])
-				
-#				return ret
+				path = getContentURL(section, courseShortName, username, password, cookies_str)
+				if path is not None:
+					plugin.log.info('Handle: ' + str(plugin.handle))
+					
+					ret = plugin.set_resolved_url(path)
+					
+					if "Subtitle" in section['resources']:
+						player = xbmc.Player()
+						while not player.isPlaying():
+							time.sleep(1)
+						player.setSubtitles(section['resources']["Subtitle"])
+					
+	#				return ret
 				break
 		
 #	return []
@@ -466,13 +483,20 @@ def listLectureContents(courseShortName, section_num):
 	ret = []
 	for section_name, section in section_lecture.iteritems():
 		title, duration = extractDuration(section_name)
-		url = section['resources']["Lecture Video"]
+		
 		lecture_num = section['lecture_num'] # int(section["lecture_id"])
 		
 		play_url = plugin.url_for(endpoint="playLecture", courseShortName=courseShortName, lecture_id=str(section["lecture_id"]))
 		
+		episode_num = lecture_num+1
+		
+		number_episodes = plugin.get_setting('number_episodes')
+		
+		if number_episodes is True or number_episodes == "true":
+			title = "%d. %s" % (episode_num, title)
+		
 		info = {
-			'episode': lecture_num+1,
+			'episode': episode_num,
 			'season': int(section_num)+1,
 			'title': title,	
 			'watched':section["viewed"],
@@ -489,27 +513,29 @@ def listLectureContents(courseShortName, section_num):
 		
 		if duration is not None:
 			info["duration"] = duration
-		
-		path = "%s|%s" % (url, cookies_str)
-		
-		if alwaysSubtiles():
+
+		if alwaysSubtiles() is True or alwaysSubtiles() == "true":
 			path = play_url
+			if section['resources']["Lecture Video"] is None:
+				path = None
+		else:
+			path = getContentURL(section, courseShortName, username, password, cookies_str)
 			
 #		print info
-			
-		ret.append({
-			'label': title,
-			'path': path,
-			'is_playable': True,
-			'info':info,
-			'context_menu':[
-						("Play with subtitles", "XBMC.RunPlugin(%s)" % play_url),
-						("Play with subtitles2", "XBMC.PlayMedia(%s)" % play_url)
-						],
-		})
+		if path is not None:	
+			ret.append({
+				'label': title,
+				'path': path,
+				'is_playable': True,
+				'info':info,
+				'context_menu':[
+							("Play with subtitles", "XBMC.RunPlugin(%s)" % play_url),
+							("Play with subtitles2", "XBMC.PlayMedia(%s)" % play_url)
+							],
+			})
 	plugin.add_sort_method(xbmcswift2.SortMethod.EPISODE)
 #	print(dir(xbmcswift2.SortMethod))
-	return ret
+	return list(sorted(ret, key=lambda x:x["info"]["episode"]))
 
 if __name__ == '__main__':
 	plugin.run()
