@@ -51,7 +51,8 @@ def get_page(href, opener):
 	return opener.open(req).read()
 
 def getClasses(opener):
-	href = "https://www.coursera.org/maestro/api/topic/list2_new"
+# 	href = "https://www.coursera.org/maestro/api/topic/list2_new"
+	href = "https://www.coursera.org/maestro/api/topic/list2_combined"
 	
 	page_contents = get_page(href, opener)
 	
@@ -79,7 +80,7 @@ def loadClasses(username, password):
 	try:
 		classes = getClasses(opener)
 	except urllib2.HTTPError, ex:
-		if ex.code != 403:
+		if ex.code not in [403, 401]:
 			raise ex
 		
 		if did_login:
@@ -92,7 +93,7 @@ def loadClasses(username, password):
 		opener = getOpenerFromRawCookies(cookies_raw=cookies_raw)
 		classes = getClasses(opener)
 		
-	return classes
+	return classes['list2']
 
 @plugin.route('/classes/', name="classes")
 @plugin.route('/',name="index")
@@ -284,7 +285,7 @@ def getSylabus(className, username, password):
 
 	sylabus_txt = get_page(url, opener)
 #	print "sylabus_txt = %s" % sylabus_txt
-	not_logged_in = 'with a Coursera account' in sylabus_txt
+	not_logged_in = 'with a Coursera account' in sylabus_txt or "// First check the URL and line number of the error" in sylabus_txt
 	
 	if not_logged_in:
 		if didLogin:
@@ -296,7 +297,7 @@ def getSylabus(className, username, password):
 		
 			sylabus_txt = get_page(url, opener)
 	#		print "sylabus_txt = %s" % sylabus_txt
-			not_logged_in = 'with a Coursera account' in sylabus_txt
+			not_logged_in = 'with a Coursera account' in sylabus_txt or "// First check the URL and line number of the error" in sylabus_txt
 			if not_logged_in:
 				raise Exception("Unable to login to class")
 			else:
@@ -485,6 +486,8 @@ def listLectureContents(courseShortName, section_num):
 		title, duration = extractDuration(section_name)
 		
 		lecture_num = section['lecture_num'] # int(section["lecture_id"])
+		
+		
 		
 		play_url = plugin.url_for(endpoint="playLecture", courseShortName=courseShortName, lecture_id=str(section["lecture_id"]))
 		
