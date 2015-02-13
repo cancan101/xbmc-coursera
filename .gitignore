@@ -1,2 +1,4 @@
 *.pyc
 settings.json
+.project
+.pydevproject
