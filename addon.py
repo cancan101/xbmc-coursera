@@ -9,7 +9,7 @@ import json
 import re
 
 from course_utils import login_to_class, get_syllabus_url, parse_syllabus
-from courseraLogin import login, saveCJ
+from coursera_login import login, saveCJ
 import datetime
 import time
 
