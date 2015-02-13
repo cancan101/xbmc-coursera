@@ -1,0 +1,7 @@
+v0.3.0.3
+
+- Change version naming scheme
+- Cleanup python code to follow conventions (PEP8 and lint)
+
+v0.302
+- Initial version (by Alex Rothberg (cancan101))
