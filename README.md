@@ -8,4 +8,5 @@ the [XBMC](http://xbmc.org) interface.
 
 ### Features
 
-* Browse courses and lectures found on the website.
+* Browse course sessions and lectures on the site. Videos are only available of
+  the courses the user has registered and accepted the terms for.
