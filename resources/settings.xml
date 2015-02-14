@@ -8,6 +8,7 @@
 		<setting type="sep"/>        
         <setting id="enable_subtitles" type="bool" default="true" label="30111" />
         <setting id="number_episodes" type="bool" default="false" label="30112" />
+        <setting id="enable_debug" type="bool" default="false" label="30113" />
 		<setting type="sep"/>
         <setting type="action" label="30060" option="close" action="XBMC.RunPlugin(plugin://plugin.video.coursera/clearcache/)" />
   </category>

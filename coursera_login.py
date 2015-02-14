@@ -3,50 +3,16 @@ Created on Nov 5, 2012
 
 @author: alex
 '''
-
-import urllib2, urllib
-import cookielib
 import random
 import string
-import json
 
-#########
+from xbmcswift2 import Plugin
+import requests
 
+plugin = Plugin()
 
-def saveUserData(cookies, external_id, public_id):
-    data = {'cookies': cookies, 'external_id': external_id,
-            'public_id': public_id}
-
-    cookie_file = open('cookie.txt', 'w')
-
-    json.dump(obj=data, fp=cookie_file, indent=3)
-
-    cookie_file.close()
-
-CSRFT_TOKEN_COOKIE_NAME = "csrftoken"
-
-
-def cookieToDict(cookie):
-    ret = {}
-    for name in ("version", "name", "value",
-                 "port", "port_specified",
-                 "domain", "domain_specified", "domain_initial_dot",
-                 "path", "path_specified",
-                 "secure", "expires", "discard", "comment", "comment_url",
-                 ):
-        attr = getattr(cookie, name)
-        ret[name] = attr
-    ret["rest"] = cookie._rest
-    ret["rfc2109"] = cookie.rfc2109
-    return ret
-
-
-def saveCJ(cj):
-    cookies = []
-    for cookie in cj:
-        cookies.append(cookieToDict(cookie))
-
-    return cookies
+BASE_CLASS_URL = "https://class.coursera.org"
+LOGIN_URL = "https://accounts.coursera.org/api/v1/login"
 
 
 def makeCSRFToken():
@@ -56,43 +22,79 @@ def makeCSRFToken():
     return csrftoken
 
 
-def makeLoginRequest(username, password, csrftoken):
-    params = urllib.urlencode({'email': username, 'password': password})
-    req = urllib2.Request("https://accounts.coursera.org/api/v1/login", params)
-    req.add_header('Referer', 'https://www.coursera.org/account/signin')
-    req.add_header('Host', "accounts.coursera.org")
-    req.add_header('X-CSRFToken', csrftoken)
-    req.add_header('X-Requested-With', 'XMLHttpRequest')
-    req.add_header('Origin', 'https://accounts.coursera.org')
-
-    return req
-
-
 def login(username, password):
-    cj = cookielib.CookieJar()
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-    #req = urllib2.Request('https://www.coursera.org/account/signin')
-    #req.add_header('Host',"www.coursera.org")
-    #opener.open(req)
-
     csrftoken = makeCSRFToken()
+    headers = {
+        'Referer': 'https://www.coursera.org/account/signin',
+        'Host': "accounts.coursera.org",
+        'X-CSRFToken': csrftoken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': 'https://accounts.coursera.org',
+        'Cookie': 'csrftoken=%s' % csrftoken,
+    }
+    data = dict(email=username, password=password, webrequest='true')
+    res = requests.post(LOGIN_URL, data=data, headers=headers)
+    assert res.ok, "Could not login: %s" % res.content
+    return res.cookies.get_dict()
 
-    #print "%s=%s" % (CSRFT_TOKEN_COOKIE_NAME, csrftoken)
 
-    c = cookielib.Cookie(None, CSRFT_TOKEN_COOKIE_NAME, csrftoken, None, None,
-                         "", None, None, "/", None, True, None, None, None,
-                         None, None, None)
-    cj.set_cookie(c)
+def get_auth_url(className):
+    return ("%s/%s/auth/auth_redirector?type=login&"
+            "subtype=normal&email=&visiting=&minimal=true") % (
+                BASE_CLASS_URL, className)
 
-    req = makeLoginRequest(username, password, csrftoken)
-    response = opener.open(req)
-    logIn_resp = response.read()
 
-    #print logIn_resp_dict
+@plugin.cached()
+def getClassCookies(className, username, password):
+    user_data = plugin.get_storage(username, file_format='json')
+    if user_data is None:
+        return None
 
-    cj.clear("", "/", CSRFT_TOKEN_COOKIE_NAME)
+    cookies_raw = user_data.get('cookies')
+    if cookies_raw is None:
+        cookies_raw = login(username, password)
+        if cookies_raw is None:
+            return None
+        user_data['cookies'] = cookies_raw
 
-    #cj.clear("www.coursera.org", "/", "maestro_login")
-    #cj.clear("www.coursera.org", "/", "sessionid")
+    res = requests.get(get_auth_url(className), allow_redirects=False,
+                       cookies=cookies_raw)
+    if not res.ok:
+        res.raise_for_status()
+    cookies = res.cookies.get_dict()
+    cookies.update(cookies_raw)
+    return cookies
 
-    return saveCJ(cj)
+
+def loadSavedClassCookies(username):
+    user_data = plugin.get_storage(username, file_format='json')
+
+    cookies_class = user_data.get('cookies_class')
+    if cookies_class is None:
+        cookies_class = user_data['cookies_class'] = {}
+
+    return cookies_class
+
+
+def getClassCookieOrLogin(username, password, courseShortName,
+                          indicateDidLogin=False):
+    didLogin = False
+
+    cookies_class = loadSavedClassCookies(username)
+
+    class_cookies = cookies_class.get(courseShortName)
+    if class_cookies is None:
+        plugin.log.debug("Cookies for %s not found. Logging in to class",
+                         courseShortName)
+        class_cookies = getClassCookies(courseShortName, username, password)
+
+        if class_cookies is not None:
+            didLogin = True
+            cookies_class[courseShortName] = class_cookies
+        else:
+            raise Exception("Unable to login to class")
+
+    if indicateDidLogin:
+        return class_cookies, didLogin
+    else:
+        return class_cookies
