@@ -1,0 +1,11 @@
+v0.3.1
+
+- Change login and class fetching flow (sort of works)
+- Add license, requirements and changelog text files
+- Change version scheme (use semantic versioning)
+- Use (simpler) requests package instead of urllib for http requests
+- Cleanup python code to follow conventions (PEP8 and lint)
+- Refactor out non route functions outside of `addon` module
+
+v0.302
+- Initial version (by Alex Rothberg (cancan101))
