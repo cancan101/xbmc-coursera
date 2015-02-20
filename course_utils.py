@@ -4,7 +4,6 @@ Created on Nov 7, 2012
 @author: alex
 '''
 import datetime
-import operator
 import re
 import string
 
@@ -70,8 +69,7 @@ def loadClasses(username, password):
 
 def get_page(href, json=False, **kwargs):
     res = requests.get(href, **kwargs)
-    if not res.ok:
-        res.raise_for_status()
+    res.raise_for_status()
     return res.content if not json else res.json()
 
 
@@ -84,8 +82,7 @@ def get_syllabus_url(className):
 def getSylabus(className, username, password):
     plugin.log.info("getSylabus for %s." % className)
 
-    cookies, didLogin = getClassCookieOrLogin(username, password, className,
-                                              indicateDidLogin=True)
+    cookies = getClassCookieOrLogin(username, password, className)
     url = get_syllabus_url(className=className)
 
     sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
@@ -94,22 +91,19 @@ def getSylabus(className, username, password):
         "// First check the URL and line number of the error" in sylabus_txt)
 
     if not_logged_in:
-        if didLogin:
+        plugin.log.info("Cookies for %s are old. Logging in to class",
+                        className)
+        cookies = getClassCookies(className, username, password)
+        sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
+        plugin.log.debug("sylabus_txt = %s", sylabus_txt)
+        not_logged_in = 'with a Coursera account' in sylabus_txt or (
+            "// First check the URL and line number of the error"
+            in sylabus_txt)
+        if not_logged_in:
             raise Exception("Unable to login to class")
         else:
-            plugin.log.info("Cookies for %s are old. Logging in to class",
-                            className)
-            cookies = getClassCookies(className, username, password)
-            sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
-            plugin.log.debug("sylabus_txt = %s", sylabus_txt)
-            not_logged_in = 'with a Coursera account' in sylabus_txt or (
-                "// First check the URL and line number of the error"
-                in sylabus_txt)
-            if not_logged_in:
-                raise Exception("Unable to login to class")
-            else:
-                cookies_class = loadSavedClassCookies(username)
-                cookies_class[className] = cookies.get_dict()
+            cookies_class = loadSavedClassCookies(username)
+            cookies_class[className] = cookies.get_dict()
 
     parsed = parse_syllabus(sylabus_txt)
 
@@ -158,7 +152,7 @@ def parse_classes(classes_data):
         course_metadata[course['id']] = course
 
     sorted_sessions = sorted(classes_data['linked']['v1Sessions.v1'],
-                             key=operator.itemgetter('id'), reverse=True)
+                             key=lambda x: x['id'], reverse=True)
     for session in sorted_sessions:
         course_id = session['courseId']
         session['startDateString'] = get_start_date_string(session)
@@ -327,7 +321,6 @@ def parse_syllabus(page_txt):
                                  "%s", lecture_title_str, heading_text)
                 continue
 
-            mp4_found = False
             for resource in resources.findAll('a'):
                 href = resource['href']
                 title = resource['title']
@@ -336,16 +329,14 @@ def parse_syllabus(page_txt):
                 plugin.log.debug("-- %s (%s) format=%s",
                                  title, href, resource_format)
                 if resource_format == 'mp4':
-                    mp4_found = True
                     resources_entry["Lecture Video"] = href
                 elif resource_format == 'srt':
                     resources_entry["Subtitle"] = href
 
                 resources_entry[title] = href
 
-            if not mp4_found:
-                plugin.log.error("No MP4 resource found. Using hidden video "
-                                 "url logic")
+            if "Lecture Video" not in resources_entry:
+                plugin.log.error("No mp4 resource found in %s", resources)
 
     return {
         'sections': ret,
