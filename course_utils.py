@@ -323,7 +323,6 @@ def parse_syllabus(page_txt):
                                  "%s", lecture_title_str, heading_text)
                 continue
 
-            mp4_found = False
             for resource in resources.findAll('a'):
                 href = resource['href']
                 title = resource['title']
@@ -332,16 +331,14 @@ def parse_syllabus(page_txt):
                 plugin.log.debug("-- %s (%s) format=%s",
                                  title, href, resource_format)
                 if resource_format == 'mp4':
-                    mp4_found = True
                     resources_entry["Lecture Video"] = href
                 elif resource_format == 'srt':
                     resources_entry["Subtitle"] = href
 
                 resources_entry[title] = href
 
-            if not mp4_found:
-                plugin.log.error("No MP4 resource found. Using hidden video "
-                                 "url logic")
+            if "Lecture Video" not in resources_entry:
+                plugin.log.error("No mp4 resource found in %s", resources)
 
     return {
         'sections': ret,
