@@ -59,8 +59,7 @@ def getClassCookies(className, username, password):
 
     res = requests.get(get_auth_url(className), allow_redirects=False,
                        cookies=cookies_raw)
-    if not res.ok:
-        res.raise_for_status()
+    res.raise_for_status()
     cookies = res.cookies.get_dict()
     cookies.update(cookies_raw)
     return cookies

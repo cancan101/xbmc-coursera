@@ -69,8 +69,7 @@ def loadClasses(username, password):
 
 def get_page(href, json=False, **kwargs):
     res = requests.get(href, **kwargs)
-    if not res.ok:
-        res.raise_for_status()
+    res.raise_for_status()
     return res.content if not json else res.json()
 
 
