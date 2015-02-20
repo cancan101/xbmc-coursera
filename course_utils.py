@@ -84,8 +84,7 @@ def get_syllabus_url(className):
 def getSylabus(className, username, password):
     plugin.log.info("getSylabus for %s." % className)
 
-    cookies, didLogin = getClassCookieOrLogin(username, password, className,
-                                              indicateDidLogin=True)
+    cookies = getClassCookieOrLogin(username, password, className)
     url = get_syllabus_url(className=className)
 
     sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
@@ -94,22 +93,19 @@ def getSylabus(className, username, password):
         "// First check the URL and line number of the error" in sylabus_txt)
 
     if not_logged_in:
-        if didLogin:
+        plugin.log.info("Cookies for %s are old. Logging in to class",
+                        className)
+        cookies = getClassCookies(className, username, password)
+        sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
+        plugin.log.debug("sylabus_txt = %s", sylabus_txt)
+        not_logged_in = 'with a Coursera account' in sylabus_txt or (
+            "// First check the URL and line number of the error"
+            in sylabus_txt)
+        if not_logged_in:
             raise Exception("Unable to login to class")
         else:
-            plugin.log.info("Cookies for %s are old. Logging in to class",
-                            className)
-            cookies = getClassCookies(className, username, password)
-            sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
-            plugin.log.debug("sylabus_txt = %s", sylabus_txt)
-            not_logged_in = 'with a Coursera account' in sylabus_txt or (
-                "// First check the URL and line number of the error"
-                in sylabus_txt)
-            if not_logged_in:
-                raise Exception("Unable to login to class")
-            else:
-                cookies_class = loadSavedClassCookies(username)
-                cookies_class[className] = cookies.get_dict()
+            cookies_class = loadSavedClassCookies(username)
+            cookies_class[className] = cookies.get_dict()
 
     parsed = parse_syllabus(sylabus_txt)
 

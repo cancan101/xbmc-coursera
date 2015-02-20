@@ -76,9 +76,7 @@ def loadSavedClassCookies(username):
     return cookies_class
 
 
-def getClassCookieOrLogin(username, password, courseShortName,
-                          indicateDidLogin=False):
-    didLogin = False
+def getClassCookieOrLogin(username, password, courseShortName):
 
     cookies_class = loadSavedClassCookies(username)
 
@@ -89,12 +87,8 @@ def getClassCookieOrLogin(username, password, courseShortName,
         class_cookies = getClassCookies(courseShortName, username, password)
 
         if class_cookies is not None:
-            didLogin = True
             cookies_class[courseShortName] = class_cookies
         else:
             raise Exception("Unable to login to class")
 
-    if indicateDidLogin:
-        return class_cookies, didLogin
-    else:
-        return class_cookies
+    return class_cookies
