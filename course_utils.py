@@ -4,7 +4,6 @@ Created on Nov 7, 2012
 @author: alex
 '''
 import datetime
-import operator
 import re
 import string
 
@@ -154,7 +153,7 @@ def parse_classes(classes_data):
         course_metadata[course['id']] = course
 
     sorted_sessions = sorted(classes_data['linked']['v1Sessions.v1'],
-                             key=operator.itemgetter('id'), reverse=True)
+                             key=lambda x: x['id'], reverse=True)
     for session in sorted_sessions:
         course_id = session['courseId']
         session['startDateString'] = get_start_date_string(session)
