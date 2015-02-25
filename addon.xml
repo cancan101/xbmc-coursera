@@ -15,6 +15,6 @@
     <summary>View Coursera Lectures</summary>
     <description>Fetches a user's courses and allows for viewing all course lecture videos</description>
     <source>https://github.com/cancan101/xbmc-coursera</source>
-    <license>GNU GENERAL PUBLIC LICENSE. Version 3, 29 June 2007</license>
+    <license>MIT License</license>
   </extension>
 </addon>
