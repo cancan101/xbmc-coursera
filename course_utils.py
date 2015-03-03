@@ -105,6 +105,7 @@ def getSylabus(className, username, password):
             cookies_class = loadSavedClassCookies(username)
             cookies_class[className] = cookies.get_dict()
 
+    sylabus_txt = sylabus_txt.decode('unicode_escape').encode('ascii','ignore')
     parsed = parse_syllabus(sylabus_txt)
 
     return parsed
