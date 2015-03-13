@@ -80,22 +80,23 @@ def get_syllabus_url(className):
 
 @plugin.cached()
 def getSylabus(className, username, password):
-    plugin.log.info("getSylabus for %s." % className)
+    plugin.log.info("getSylabus for %s." % className.encode('utf-8'))
 
     cookies = getClassCookieOrLogin(username, password, className)
     url = get_syllabus_url(className=className)
 
     sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
-    plugin.log.debug("sylabus_txt = %s", sylabus_txt)
+    plugin.log.debug("sylabus_txt = %s", sylabus_txt.decode(
+        'unicode_escape', 'ignore').encode('ascii', 'ignore'))
     not_logged_in = 'with a Coursera account' in sylabus_txt or (
         "// First check the URL and line number of the error" in sylabus_txt)
 
     if not_logged_in:
         plugin.log.info("Cookies for %s are old. Logging in to class",
-                        className)
+                        className.encode('utf-8'))
         cookies = getClassCookies(className, username, password)
         sylabus_txt = get_page(url, cookies=cookies, allow_redirects=False)
-        plugin.log.debug("sylabus_txt = %s", sylabus_txt)
+        plugin.log.debug("sylabus_txt = %s", sylabus_txt.encode('utf-8'))
         not_logged_in = 'with a Coursera account' in sylabus_txt or (
             "// First check the URL and line number of the error"
             in sylabus_txt)
@@ -105,7 +106,6 @@ def getSylabus(className, username, password):
             cookies_class = loadSavedClassCookies(username)
             cookies_class[className] = cookies.get_dict()
 
-    sylabus_txt = sylabus_txt.decode('unicode_escape').encode('ascii','ignore')
     parsed = parse_syllabus(sylabus_txt)
 
     return parsed
@@ -268,7 +268,7 @@ def parse_syllabus(page_txt):
             "&nbsp;", " ").replace("&quot;", '"')
 
         heading_text = heading_text.strip()
-        plugin.log.debug(heading_text)
+        plugin.log.debug(heading_text.encode('utf-8'))
 
         section_entry = ret[heading_text] = {}
         section_entry['section_num'] = section_num
@@ -277,7 +277,8 @@ def parse_syllabus(page_txt):
 
         section_entries = section.nextSibling
         if section_entries is None:
-            plugin.log.debug("Unable to parse section: %s", heading_text)
+            plugin.log.debug("Unable to parse section: %s",
+                             heading_text.encode('utf-8'))
             continue
 
         lectures = section_entries.findAll('li')
@@ -286,7 +287,8 @@ def parse_syllabus(page_txt):
 
             if lecture_title is None:
                 plugin.log.debug("Unable to parse lecture in %s ("
-                                 "lecture_title is None)", heading_text)
+                                 "lecture_title is None)",
+                                 heading_text.encode('utf-8'))
                 continue
 
             data_lecture_view_link = lecture_title.get(
@@ -296,12 +298,13 @@ def parse_syllabus(page_txt):
 
             lecture_title_str = lecture_title.find(text=True)
             if lecture_title_str is None:
-                plugin.log.debug("Unable to parse lecture in %s", heading_text)
+                plugin.log.debug("Unable to parse lecture in %s",
+                                 heading_text.encode('utf-8'))
                 continue
 
             lecture_title_str = lecture_title_str.strip().replace("&quot;", '"')
-            plugin.log.debug("- %s (%s)", lecture_title_str,
-                             data_lecture_view_link)
+            plugin.log.debug("- %s (%s)", lecture_title_str.encode('utf-8'),
+                             data_lecture_view_link.encode('utf-8'))
 
             lecture_entry = sections_entry[lecture_title_str] = {}
 
@@ -319,7 +322,8 @@ def parse_syllabus(page_txt):
                 ]})
             if resources is None:
                 plugin.log.debug("Unable to find resources for lecture %s in"
-                                 "%s", lecture_title_str, heading_text)
+                                 "%s", lecture_title_str.encode('utf-8'),
+                                 heading_text.encode('utf-8'))
                 continue
 
             for resource in resources.findAll('a'):
@@ -328,7 +332,8 @@ def parse_syllabus(page_txt):
                 resource_format = get_anchor_format(href)
 
                 plugin.log.debug("-- %s (%s) format=%s",
-                                 title, href, resource_format)
+                                 title.encode('utf-8'), href,
+                                 resource_format.encode('utf-8'))
                 if resource_format == 'mp4':
                     resources_entry["Lecture Video"] = href
                 elif resource_format == 'srt':
@@ -337,7 +342,8 @@ def parse_syllabus(page_txt):
                 resources_entry[title] = href
 
             if "Lecture Video" not in resources_entry:
-                plugin.log.error("No mp4 resource found in %s", resources)
+                plugin.log.error("No mp4 resource found in %s",
+                                 resources.encode('utf-8'))
 
     return {
         'sections': ret,
