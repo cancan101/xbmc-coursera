@@ -326,14 +326,16 @@ def parse_syllabus(page_txt):
                                  heading_text.encode('utf-8'))
                 continue
 
+
             for resource in resources.findAll('a'):
                 href = resource['href']
                 title = resource['title']
                 resource_format = get_anchor_format(href)
 
-                plugin.log.debug("-- %s (%s) format=%s",
-                                 title.encode('utf-8'), href,
-                                 resource_format.encode('utf-8'))
+                if resource_format and title:
+                    plugin.log.debug("-- %s (%s) format=%s",
+                                     title.encode('utf-8'), href,
+                                     resource_format.encode('utf-8'))
                 if resource_format == 'mp4':
                     resources_entry["Lecture Video"] = href
                 elif resource_format == 'srt':
